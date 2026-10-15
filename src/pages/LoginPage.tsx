@@ -1,23 +1,26 @@
-import { useState, type FormEvent } from "react";
+import { type FormEvent, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Alert } from "../components/Alert";
 import { Card } from "../components/Card";
 import { FormField } from "../components/FormField";
-import { loginRequest } from "../services/auth.service";
+import { useAuth } from "../hooks/useAuth";
 import { parseApiError } from "../utils/api-error";
 import { type FieldErrors, zodToFieldErrors } from "../utils/form-errors";
 import { loginSchema } from "../validators/auth.schema";
 
 export function LoginPage() {
+  const { login, sessionExpired } = useAuth();
   const location = useLocation();
   const justRegistered =
     (location.state as { registered?: boolean } | null)?.registered === true;
 
-  const [values, setValues] = useState({ email: "", password: "" });
+  const [values, setValues] = useState({
+    email: "admin@Example.com",
+    password: "Password123",
+  });
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [loginSucceeded, setLoginSucceeded] = useState(false);
 
   const updateField = (field: keyof typeof values) => (value: string) => {
     setValues((previous) => ({ ...previous, [field]: value }));
@@ -26,7 +29,6 @@ export function LoginPage() {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setFormError(null);
-    setLoginSucceeded(false);
 
     const result = loginSchema.safeParse(values);
     if (!result.success) {
@@ -38,9 +40,8 @@ export function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      await loginRequest(result.data);
-      // Temporary: Day 9 stores the token and redirects to the dashboard.
-      setLoginSucceeded(true);
+      await login(result.data);
+      // On success the status becomes "authenticated" and GuestRoute redirects.
     } catch (error) {
       const parsed = parseApiError(error);
       setFormError(parsed.message);
@@ -52,15 +53,15 @@ export function LoginPage() {
 
   return (
     <Card title="Login">
+      {sessionExpired && (
+        <Alert variant="error">
+          Your session has expired. Please log in again.
+        </Alert>
+      )}
       {justRegistered && (
         <Alert variant="success">Account created. Please log in.</Alert>
       )}
       {formError && <Alert variant="error">{formError}</Alert>}
-      {loginSucceeded && (
-        <Alert variant="success">
-          Login successful. Session handling comes next.
-        </Alert>
-      )}
 
       <form onSubmit={handleSubmit} noValidate>
         <FormField

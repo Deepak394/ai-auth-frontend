@@ -15,6 +15,12 @@ export function parseApiError(error: unknown): ParsedApiError {
   }
 
   if (!error.response) {
+    if (error.code === 'ECONNABORTED') {
+      return {
+        message: 'The server took too long to respond. Please try again.',
+        fieldErrors: {},
+      };
+    }
     return {
       message: 'Cannot reach the server. Check your connection and try again.',
       fieldErrors: {},
